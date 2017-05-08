@@ -4,11 +4,10 @@ This assumes you already have mbed-cli and gcc set up, and a K64F device connect
 
 * mbed import mbed-os-example-client _(or: mbed import https://github.com/CristianPrundeanuARM/exd-tsdb-mbed-client-connector)_
 * cd $_
-* mbed target K64F
+* mbed target K64F _(or: mbed target detect)_
 * mbed toolchain GCC_ARM
 * _**replace security.h as per https://connector.mbed.com/#credentials**_
-* mbed compile
-* cp BUILD/K64F/GCC_ARM/*.bin /Volumes/DAPLINK/
+* mbed compile -f _(this will compile **and** flash; you need mbed-cli 1.1+)_
 * _**after flashing is done, reboot the board by pressing the RESET button**_
 
 # Getting started with mbed Client on mbed OS
