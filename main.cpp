@@ -19,6 +19,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <map>
 #include "mbed-trace/mbed_trace.h"
 #include "mbedtls/entropy_poll.h"
 
@@ -95,6 +96,100 @@ public:
     }
     uint16_t position;
     std::vector<uint32_t> blink_pattern;
+};
+
+namespace std
+{
+    template <typename T>
+    std::string to_string(T Value)
+    {
+        std::ostringstream TempStream;
+        TempStream << Value;
+        return TempStream.str();
+    }
+}
+
+class DataSource {
+public:
+    DataSource(const std::string &name) : ds_name(name), instance_id(0) {}
+    void set_data_description(const std::string &id, const std::string &description) {
+        data_names[id] = description;
+    }
+    void record_data(const std::string &id, const std::string &data) {
+        data_values[id] = data;
+    }
+    std::string json(bool include_brackets=true) {
+        std::string json;
+        bool first = true;
+        if (include_brackets) {
+            json = "[\n";
+        }
+        for (std::map<std::string,std::string>::iterator it = data_values.begin(); it != data_values.end(); ++it) {
+            if (!first) {
+                json += "    ,\n";
+            }
+            first = false;
+            json += "    {\n        \"uri\":\"/";
+            json += ds_name + "/" + std::to_string(instance_id) + "/" + (*it).first;
+            json += "\",\n        \"desc\":\"";
+            json += data_names[(*it).first] + "\",\n        \"value\":\"";
+            json += (*it).second + "\"\n    }";
+            json += "\n";
+            //std::cout << " [" << (*it).first << ':' << (*it).second << ']';
+        }
+        if (include_brackets) {
+            json += "]";
+        }
+        return json;
+    }
+    virtual void read_data() = 0;
+private:
+    std::string ds_name;
+    int instance_id;
+    std::map<std::string, std::string> data_names;
+    std::map<std::string, std::string> data_values;
+};
+
+class DataAggregator {
+public:
+    DataAggregator() {
+        aggregator_object = M2MInterfaceFactory::create_object("alldata");
+        M2MObjectInstance* aggregator_inst = aggregator_object->create_object_instance();
+
+        M2MResource* aggregator_resource = aggregator_inst->create_dynamic_resource("json", "AllData",
+            M2MResourceInstance::STRING, true);
+        aggregator_resource->set_operation(M2MBase::GET_ALLOWED);
+        aggregator_resource->clear_value();
+    }
+    void add_data_source(DataSource *ds) {
+        data_sources.push_back(ds);
+    }
+    void update_all() {
+        if (mbed_client.register_successful()) {
+            bool first = true;
+            M2MObjectInstance* inst = aggregator_object->object_instance();
+            M2MResource* res = inst->resource("json");
+            std::string json = "[\n";
+            for (std::vector<DataSource*>::iterator it = data_sources.begin(); it != data_sources.end(); ++it) {
+                (*it)->read_data();
+                if (!first) {
+                    json += "    ,\n";
+                }
+                first = false;
+                json += (*it)->json(false);
+            }
+            json += "]";
+            const char *buffer = json.c_str();
+            res->set_value((const uint8_t *)buffer, strlen(buffer));
+        }
+    }
+
+    M2MObject* get_object() {
+        return aggregator_object;
+    }
+private:
+    std::vector<DataSource*> data_sources;
+    M2MObject* aggregator_object;
 };
 
 /*
@@ -211,9 +306,9 @@ private:
  * The button contains one property (click count).
  * When `handle_button_click` is executed, the counter updates.
  */
-class ButtonResource {
+class ButtonResource: public DataSource {
 public:
-    ButtonResource(): counter(0) {
+    ButtonResource(): DataSource("3200"), counter(0) {
         // create ObjectID with metadata tag of '3200', which is 'digital input'
         btn_object = M2MInterfaceFactory::create_object("3200");
         M2MObjectInstance* btn_inst = btn_object->create_object_instance();
@@ -225,6 +320,8 @@ public:
         // set initial value (all values in mbed Client are buffers)
         // to be able to read this data easily in the Connector console, we'll use a string
         btn_res->set_value((uint8_t*)"0", 1);
+
+        set_data_description("5501", "Button");
     }
 
     ~ButtonResource() {
@@ -232,6 +329,12 @@ public:
 
     M2MObject* get_object() {
         return btn_object;
+    }
+
+    virtual void read_data() {
+        char buffer[20];
+        sprintf(buffer, "%d", counter);
+        record_data("5501", buffer);
     }
 
     /*
@@ -313,9 +416,9 @@ private:
     M2MObject*  big_payload;
 };
 
-class AccelerometerResource {
+class AccelerometerResource: public DataSource {
 public:
-    AccelerometerResource() : _accel(PTE25, PTE24, FXOS8700CQ_SLAVE_ADDR1) {
+    AccelerometerResource() : DataSource("3313"), _accel(PTE25, PTE24, FXOS8700CQ_SLAVE_ADDR1) {
         // Configure the Accelerometer
         //_accel.config_int();           // enabled interrupts from accelerometer
         //_accel.config_feature();       // turn on motion detection
@@ -329,44 +432,50 @@ public:
             M2MResourceInstance::INTEGER, true);
         accel_x->set_operation(M2MBase::GET_ALLOWED);
         accel_x->set_value(0);
+        set_data_description("5702", "AccelX");
 
         M2MResource* accel_y = accel_inst->create_dynamic_resource("5703", "AccelY",
             M2MResourceInstance::INTEGER, true);
         accel_y->set_operation(M2MBase::GET_ALLOWED);
         accel_y->set_value(0);
+        set_data_description("5703", "AccelY");
 
         M2MResource* accel_z = accel_inst->create_dynamic_resource("5704", "AccelZ",
             M2MResourceInstance::INTEGER, true);
         accel_z->set_operation(M2MBase::GET_ALLOWED);
         accel_z->set_value(0);
+        set_data_description("5704", "AccelZ");
     }
 
     M2MObject* get_object() {
         return accel_object;
     }
 
-    void read_accel() {
+    virtual void read_data() {
         if (mbed_client.register_successful()) {
+            M2MObjectInstance* inst = accel_object->object_instance();
+            M2MResource* res;
+            int size;
+            char buffer[20];
+
             SRAWDATA accel;
             SRAWDATA mag;
             _accel.get_data(&accel, &mag);
 
-            char buffer[20];
-            M2MObjectInstance* inst = accel_object->object_instance();
-            M2MResource* res;
-            int size;
-
             res = inst->resource("5702");
             size = sprintf(buffer, "%d", accel.x);
             res->set_value((uint8_t*)buffer, size);
+            record_data("5702", buffer);
 
             res = inst->resource("5703");
             size = sprintf(buffer, "%d", accel.y);
             res->set_value((uint8_t*)buffer, size);
+            record_data("5703", buffer);
 
             res = inst->resource("5704");
             size = sprintf(buffer, "%d", accel.z);
             res->set_value((uint8_t*)buffer, size);
+            record_data("5704", buffer);
 
             //printf("Updated accel to %d,%d,%d\n", accel.x, accel.y, accel.z);
         }
@@ -379,28 +488,32 @@ private:
     M2MObject* accel_object;
 };
 
-class AnalogInResource {
+class AnalogInResource: public DataSource {
 public:
-    AnalogInResource(PinName pin, const String &resource_id="3203", const String &name="AnalogIn") : _analog_in(pin) {
-        analog_object = M2MInterfaceFactory::create_object(resource_id);
+    AnalogInResource(PinName pin, const std::string &resource_id="3203", const std::string &name="AnalogIn") : DataSource(resource_id), _analog_in(pin) {
+        analog_object = M2MInterfaceFactory::create_object(resource_id.c_str());
         M2MObjectInstance* analog_inst = analog_object->create_object_instance();
 
-        M2MResource* analog_resource = analog_inst->create_dynamic_resource("5600", name,
+        M2MResource* analog_resource = analog_inst->create_dynamic_resource("5600", name.c_str(),
             M2MResourceInstance::FLOAT, true);
         analog_resource->set_operation(M2MBase::GET_ALLOWED);
         analog_resource->set_value(0.0f);
+        set_data_description("5600", name);
     }
 
     M2MObject* get_object() {
         return analog_object;
     }
 
-    void read_input() {
-        char buffer[20];
-        M2MObjectInstance* inst = analog_object->object_instance();
-        M2MResource* res = inst->resource("5600");
-        int size = sprintf(buffer, "%.3f", (float)_analog_in);
-        res->set_value((uint8_t*)buffer, size);
+    void read_data() {
+        if (mbed_client.register_successful()) {
+            char buffer[20];
+            M2MObjectInstance* inst = analog_object->object_instance();
+            M2MResource* res = inst->resource("5600");
+            int size = sprintf(buffer, "%.3f", (float)_analog_in);
+            res->set_value((uint8_t*)buffer, size);
+            record_data("5600", buffer);
+        }
     }
 
 private:
@@ -479,6 +592,13 @@ Add MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES and MBEDTLS_TEST_NULL_ENTROPY in mbed_app
     AnalogInResource sound_level_resource(A0, "3324", "SoundLevel");
     AnalogInResource temperature_resource(A1, "3303", "Temperature");
     AnalogInResource luminosity_resource(A2, "3301", "Light");
+    DataAggregator all_data;
+
+    all_data.add_data_source(&button_resource);
+    all_data.add_data_source(&accel_resource);
+    all_data.add_data_source(&sound_level_resource);
+    all_data.add_data_source(&temperature_resource);
+    all_data.add_data_source(&luminosity_resource);
 
 #ifdef TARGET_K64F
     // On press of SW3 button on K64F board, example application
@@ -512,6 +632,7 @@ Add MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES and MBEDTLS_TEST_NULL_ENTROPY in mbed_app
     object_list.push_back(sound_level_resource.get_object());
     object_list.push_back(temperature_resource.get_object());
     object_list.push_back(luminosity_resource.get_object());
+    object_list.push_back(all_data.get_object());
 
     // Set endpoint registration object
     mbed_client.set_register_object(register_object);
@@ -537,14 +658,7 @@ Add MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES and MBEDTLS_TEST_NULL_ENTROPY in mbed_app
             button_resource.handle_button_click();
         }
 
-        // update the accelerometer every other tick
-        if (stepcount & 1) {
-            accel_resource.read_accel();
-        }
-
-        sound_level_resource.read_input();
-        temperature_resource.read_input();
-        luminosity_resource.read_input();
+        all_data.update_all();
     }
 
     mbed_client.test_unregister();
