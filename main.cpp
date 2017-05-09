@@ -592,6 +592,7 @@ Add MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES and MBEDTLS_TEST_NULL_ENTROPY in mbed_app
     AnalogInResource sound_level_resource(A0, "3324", "SoundLevel");
     AnalogInResource temperature_resource(A1, "3303", "Temperature");
     AnalogInResource luminosity_resource(A2, "3301", "Light");
+    AnalogInResource distance_resource(A3, "3330", "Distance");
     DataAggregator all_data;
 
     all_data.add_data_source(&button_resource);
@@ -599,6 +600,7 @@ Add MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES and MBEDTLS_TEST_NULL_ENTROPY in mbed_app
     all_data.add_data_source(&sound_level_resource);
     all_data.add_data_source(&temperature_resource);
     all_data.add_data_source(&luminosity_resource);
+    all_data.add_data_source(&distance_resource);
 
 #ifdef TARGET_K64F
     // On press of SW3 button on K64F board, example application
@@ -632,6 +634,7 @@ Add MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES and MBEDTLS_TEST_NULL_ENTROPY in mbed_app
     object_list.push_back(sound_level_resource.get_object());
     object_list.push_back(temperature_resource.get_object());
     object_list.push_back(luminosity_resource.get_object());
+    object_list.push_back(distance_resource.get_object());
     object_list.push_back(all_data.get_object());
 
     // Set endpoint registration object
