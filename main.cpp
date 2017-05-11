@@ -180,7 +180,9 @@ public:
             }
             json += "]";
             const char *buffer = json.c_str();
+            printf("DataAggregator: set_value buffer=%p len=%d\n", buffer, strlen(buffer));
             res->set_value((const uint8_t *)buffer, strlen(buffer));
+            printf("DataAggregator: set_value done\n");
         }
     }
 
@@ -649,9 +651,10 @@ Add MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES and MBEDTLS_TEST_NULL_ENTROPY in mbed_app
         updates.wait(1000);
         stepcount++;
         if (registered) {
-            if(stepcount % 25 == 0) {
-                stepcount = 0;
+            if (stepcount % 25 == 0) {
+                printf("Updating registration (stepcount %d)\n", stepcount);
                 mbed_client.test_update_register();
+                printf("Registration updated\n", stepcount);
             }
         } else {
             break;
