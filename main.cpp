@@ -647,6 +647,7 @@ Add MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES and MBEDTLS_TEST_NULL_ENTROPY in mbed_app
     registered = true;
 
     int stepcount = 0;
+    const int update_interval = 3;
     while (true) {
         updates.wait(1000);
         stepcount++;
@@ -664,7 +665,9 @@ Add MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES and MBEDTLS_TEST_NULL_ENTROPY in mbed_app
             button_resource.handle_button_click();
         }
 
-        all_data.update_all();
+        if (stepcount % update_interval == 0) {
+            all_data.update_all();
+        }
     }
 
     mbed_client.test_unregister();
