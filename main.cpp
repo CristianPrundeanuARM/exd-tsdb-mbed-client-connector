@@ -52,10 +52,24 @@
 DigitalOut red_led(RED_LED);
 DigitalOut green_led(GREEN_LED);
 DigitalOut blue_led(BLUE_LED);
+volatile enum {
+    ACTIVE_NONE = 0,
+    ACTIVE_RED = 1,
+    ACTIVE_GREEN = 2,
+    ACTIVE_YELLOW = 3,
+    ACTIVE_BLUE = 4,
+    ACTIVE_MAGENTA = 5,
+    ACTIVE_CYAN = 6,
+    ACTIVE_WHITE = 7
+} active_led = ACTIVE_GREEN;
 
 Ticker status_ticker;
 void blinky() {
-    green_led = !green_led;
+    static int led_state = LED_OFF;
+    led_state = !led_state;
+    red_led = (active_led & ACTIVE_RED) ? !led_state : LED_OFF;
+    green_led = (active_led & ACTIVE_GREEN) ? !led_state : LED_OFF;
+    blue_led = (active_led & ACTIVE_BLUE) ? !led_state : LED_OFF;
 }
 
 // These are example resource values for the Device Object
@@ -238,6 +252,8 @@ public:
         // read the value of 'Pattern'
         status_ticker.detach();
         green_led = LED_OFF;
+        blue_led = LED_OFF;
+        red_led = LED_OFF;
 
         M2MObjectInstance* inst = led_object->object_instance();
         M2MResource* res = inst->resource("5853");
@@ -578,6 +594,7 @@ Add MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES and MBEDTLS_TEST_NULL_ENTROPY in mbed_app
 
     srand(seed);
     red_led = LED_OFF;
+    green_led = LED_OFF;
     blue_led = LED_OFF;
 
     status_ticker.attach_us(blinky, 250000);
@@ -673,12 +690,15 @@ Add MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES and MBEDTLS_TEST_NULL_ENTROPY in mbed_app
         } else {
             break;
         }
+        active_led = ACTIVE_GREEN;
         if (clicked_inc) {
             clicked_inc = false;
+            active_led = ACTIVE_YELLOW;
             button_resource.handle_button_inc();
         }
         if (clicked_dec) {
             clicked_dec = false;
+            active_led = ACTIVE_RED;
             button_resource.handle_button_dec();
         }
 
