@@ -631,7 +631,7 @@ Add MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES and MBEDTLS_TEST_NULL_ENTROPY in mbed_app
     object_list.push_back(device_object);
     object_list.push_back(button_resource.get_object());
     object_list.push_back(led_resource.get_object());
-    object_list.push_back(big_payload_resource.get_object());
+//    object_list.push_back(big_payload_resource.get_object());
     object_list.push_back(accel_resource.get_object());
     object_list.push_back(sound_level_resource.get_object());
     object_list.push_back(temperature_resource.get_object());
