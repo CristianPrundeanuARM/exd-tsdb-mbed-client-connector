@@ -71,14 +71,14 @@ MbedClient mbed_client(device);
 
 
 // In case of K64F board , there is button resource available
-// to change resource value and unregister
+// to increment/decrement resource value
 #ifdef TARGET_K64F
 // Set up Hardware interrupt button.
-InterruptIn obs_button(SW2);
-InterruptIn unreg_button(SW3);
+InterruptIn inc_button(SW2);
+InterruptIn dec_button(SW3);
 #else
 //In non K64F boards , set up a timer to simulate updating resource,
-// there is no functionality to unregister.
+// there is no functionality to decrement.
 Ticker timer;
 #endif
 
@@ -343,28 +343,35 @@ public:
      * When you press the button, we read the current value of the click counter
      * from mbed Device Connector, then up the value with one.
      */
+    void handle_button_inc() {
+        counter++;
+        handle_button_click();
+    }
+    void handle_button_dec() {
+        counter--;
+        handle_button_click();
+    }
+
+private:
     void handle_button_click() {
+    #ifdef TARGET_K64F
+        printf("handle_button_click, new value of counter is %d\n", counter);
+    #else
+        printf("simulate button_click, new value of counter is %d\n", counter);
+    #endif
         if (mbed_client.register_successful()) {
             M2MObjectInstance* inst = btn_object->object_instance();
             M2MResource* res = inst->resource("5501");
 
-            // up counter
-            counter++;
-    #ifdef TARGET_K64F
-            printf("handle_button_click, new value of counter is %d\n", counter);
-    #else
-            printf("simulate button_click, new value of counter is %d\n", counter);
-    #endif
             // serialize the value of counter as a string, and tell connector
             char buffer[20];
-            int size = sprintf(buffer,"%d",counter);
+            int size = sprintf(buffer, "%d", counter);
             res->set_value((uint8_t*)buffer, size);
         } else {
             printf("simulate button_click, device not registered\n");
         }
     }
 
-private:
     M2MObject* btn_object;
     uint16_t counter;
 };
@@ -526,7 +533,8 @@ private:
 // Network interaction must be performed outside of interrupt context
 Semaphore updates(0);
 volatile bool registered = false;
-volatile bool clicked = false;
+volatile bool clicked_inc = false;
+volatile bool clicked_dec = false;
 osThreadId mainThread;
 
 void unregister() {
@@ -534,8 +542,13 @@ void unregister() {
     updates.release();
 }
 
-void button_clicked() {
-    clicked = true;
+void button_inc_clicked() {
+    clicked_inc = true;
+    updates.release();
+}
+
+void button_dec_clicked() {
+    clicked_dec = true;
     updates.release();
 }
 
@@ -606,15 +619,15 @@ Add MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES and MBEDTLS_TEST_NULL_ENTROPY in mbed_app
 
 #ifdef TARGET_K64F
     // On press of SW3 button on K64F board, example application
-    // will call unregister API towards mbed Device Connector
+    // will decrement the counter
     //unreg_button.fall(&mbed_client,&MbedClient::test_unregister);
-    unreg_button.fall(&unregister);
+    dec_button.fall(&button_dec_clicked);
 
     // Observation Button (SW2) press will send update of endpoint resource values to connector
-    obs_button.fall(&button_clicked);
+    inc_button.fall(&button_inc_clicked);
 #else
     // Send update of endpoint resource values to connector every 15 seconds periodically
-    timer.attach(&button_clicked, 15.0);
+    timer.attach(&button_inc_clicked, 15.0);
 #endif
 
     // Create endpoint interface to manage register and unregister
@@ -660,9 +673,13 @@ Add MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES and MBEDTLS_TEST_NULL_ENTROPY in mbed_app
         } else {
             break;
         }
-        if (clicked) {
-            clicked = false;
-            button_resource.handle_button_click();
+        if (clicked_inc) {
+            clicked_inc = false;
+            button_resource.handle_button_inc();
+        }
+        if (clicked_dec) {
+            clicked_dec = false;
+            button_resource.handle_button_dec();
         }
 
         if (stepcount % update_interval == 0) {
