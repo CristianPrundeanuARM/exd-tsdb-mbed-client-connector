@@ -52,7 +52,7 @@
 DigitalOut red_led(RED_LED);
 DigitalOut green_led(GREEN_LED);
 DigitalOut blue_led(BLUE_LED);
-volatile enum {
+volatile enum LedColors {
     ACTIVE_NONE = 0,
     ACTIVE_RED = 1,
     ACTIVE_GREEN = 2,
@@ -685,7 +685,7 @@ Add MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES and MBEDTLS_TEST_NULL_ENTROPY in mbed_app
             if (stepcount % 25 == 0) {
                 printf("Updating registration (stepcount %d)\n", stepcount);
                 mbed_client.test_update_register();
-                printf("Registration updated\n", stepcount);
+                printf("Registration updated\n");
             }
         } else {
             break;
