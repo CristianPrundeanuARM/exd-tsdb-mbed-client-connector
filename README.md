@@ -2,8 +2,8 @@
 
 This assumes you already have mbed-cli and gcc set up, and a K64F device connected.
 
-* mbed import mbed-os-example-client _(or: mbed import https://github.com/CristianPrundeanuARM/exd-tsdb-mbed-client-connector)_
-* cd $_
+* mbed import https://github.com/CristianPrundeanuARM/exd-tsdb-mbed-client-connector
+* cd exd-tsdb-mbed-client-connector
 * mbed target K64F _(or: mbed target detect)_
 * mbed toolchain GCC_ARM
 * _**replace security.h as per https://connector.mbed.com/#credentials**_
