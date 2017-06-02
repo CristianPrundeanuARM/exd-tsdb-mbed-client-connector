@@ -1,6 +1,6 @@
 # Quick start guide with a K64F device and mbed-cli/gcc
 
-This assumes you already have mbed-cli and gcc set up, and a K64F device connected.
+This quick start assumes you already have mbed-cli and gcc set up, and a K64F device connected. If you don't, you can ignore this section and use the online compiler.
 
 * mbed import https://github.com/CristianPrundeanuARM/exd-tsdb-mbed-client-connector
 * cd exd-tsdb-mbed-client-connector
@@ -12,7 +12,9 @@ This assumes you already have mbed-cli and gcc set up, and a K64F device connect
 
 # Getting started with mbed Client on mbed OS
 
-This is the mbed Client example for mbed OS (we also have one for [Linux](https://github.com/ARMmbed/mbed-client-linux-example)). It demonstrates how to register a device with mbed Device Connector, how to read and write values, and how to deregister. If you are unfamiliar with mbed Device Connector, we recommend that you read [the introduction to the data model](https://docs.mbed.com/docs/mbed-device-connector-web-interfaces/en/latest/#the-mbed-device-connector-data-model) first.
+This is the amended mbed Client example for mbed OS. In addition to the [original client example](https://github.com/ARMmbed/mbed-os-example-client), it advertises a resource in JSON format (containing the aggregate of all other resources), reads multiple analog sensors, and uses buttons for incrementing and decrementing a counter.
+
+The primary purpose of this client is to be used in conjunction with the [Time Series Database documentation](https://github.com/ARMmbed/time_series_database_doc).
 
 ## Required software
 
